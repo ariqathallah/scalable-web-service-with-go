@@ -9,9 +9,9 @@ import (
 type OrderRepository interface {
 	CreateOrder(order *model.Order) error
 	GetAllOrders() ([]model.Order, error)
-	GetOrderByID(id uint) (model.Order, error)
-	UpdateOrder(order *model.Order) error
-	DeleteOrder(id uint) error
+	GetOrderByID(id string) (model.Order, error)
+	UpdateOrder(id string, order *model.Order) (model.Order, error)
+	DeleteOrder(id string) error
 }
 
 type orderRepository struct {
@@ -23,7 +23,7 @@ func NewOrderRepository(db *gorm.DB) OrderRepository {
 }
 
 func (r *orderRepository) CreateOrder(order *model.Order) error {
-	return r.db.Create(&order).Error
+	return r.db.Create(order).Error
 }
 
 func (r *orderRepository) GetAllOrders() ([]model.Order, error) {
@@ -32,16 +32,31 @@ func (r *orderRepository) GetAllOrders() ([]model.Order, error) {
 	return orders, err
 }
 
-func (r *orderRepository) GetOrderByID(id uint) (model.Order, error) {
+func (r *orderRepository) GetOrderByID(id string) (model.Order, error) {
 	var order model.Order
-	err := r.db.Preload("Items").Where("id = ?", id).First(&order).Error
+	err := r.db.Preload("Items").First(&order, "id = ?", id).Error
 	return order, err
 }
 
-func (r *orderRepository) UpdateOrder(order *model.Order) error {
-	return r.db.Save(&order).Error
+func (r *orderRepository) UpdateOrder(id string, updatedOrder *model.Order) (model.Order, error) {
+	var order model.Order
+	err := r.db.Preload("Items").First(&order, "id = ?", id).Error
+	if err != nil {
+		return model.Order{}, err
+	}
+
+	err = r.db.Model(&order).Updates(&updatedOrder).Error
+	if err != nil {
+		return model.Order{}, err
+	}
+
+	if err := r.db.Model(&order).Association("Items").Replace(updatedOrder.Items); err != nil {
+		return model.Order{}, err
+	}
+
+	return order, nil
 }
 
-func (r *orderRepository) DeleteOrder(id uint) error {
-	return r.db.Delete(&model.Order{}, id).Error
+func (r *orderRepository) DeleteOrder(id string) error {
+	return r.db.Delete(&model.Order{}, "id = ?", id).Error
 }

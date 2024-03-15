@@ -2,19 +2,27 @@ package model
 
 import (
 	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Order struct {
-	ID           uint      `json:"id" gorm:"unique;primaryKey;autoIncrement"`
-	CustomerName string    `json:"customer_name"`
-	Items        []Item    `json:"items"`
-	OrderedAt    time.Time `json:"ordered_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID           string         `json:"id"`
+	CustomerName string         `json:"customer_name"`
+	Items        []Item         `json:"items"`
+	OrderedAt    time.Time      `json:"ordered_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `json:"deleted_at"`
 }
 
-type OrderRequest struct {
-	CustomerName string        `json:"customer_name" binding:"required"`
-	OrderedAt    time.Time     `json:"ordered_at" binding:"required"`
-	Items        []ItemRequest `json:"items" binding:"required"`
+func (o *Order) BeforeCreate(tx *gorm.DB) error {
+	o.ID = uuid.New().String()
+	o.OrderedAt = time.Now()
+	return nil
+}
+
+func (o *Order) BeforeUpdate(tx *gorm.DB) error {
+	o.UpdatedAt = time.Now()
+	return nil
 }

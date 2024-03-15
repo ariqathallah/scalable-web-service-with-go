@@ -4,7 +4,6 @@ import (
 	"assignment-2/config"
 	"assignment-2/controller"
 	"assignment-2/repository"
-	"assignment-2/service"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -17,16 +16,14 @@ func main() {
 	}
 
 	orderRepository := repository.NewOrderRepository(db)
-	itemRepository := repository.NewItemRepository(db)
-	orderService := service.NewOrderService(orderRepository, itemRepository)
-	orderController := controller.NewOrderController(orderService)
+	orderController := controller.NewOrderController(orderRepository)
 
 	ginEngine := gin.Default()
-	ginEngine.GET("/order/:id", orderController.GetOrderByID)
-	ginEngine.GET("/order", orderController.GetAllOrders)
-	ginEngine.POST("/order", orderController.CreateOrder)
-	ginEngine.PUT("/order", orderController.UpdateOrder)
-	ginEngine.DELETE("/order/:id", orderController.DeleteOrder)
+	ginEngine.GET("/orders/:id", orderController.GetOrderByID)
+	ginEngine.GET("/orders", orderController.GetAllOrders)
+	ginEngine.POST("/orders", orderController.CreateOrder)
+	ginEngine.PUT("/orders/:id", orderController.UpdateOrder)
+	ginEngine.DELETE("/orders/:id", orderController.DeleteOrder)
 
 	err = ginEngine.Run(":8080")
 	if err != nil {
