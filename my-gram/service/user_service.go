@@ -114,7 +114,7 @@ func (s *userService) UpdateUser(param, userID int, request web.UpdateUserReques
 
 	// check if param is not match with userID
 	if user.ID != userID {
-		return web.UpdateUserResponse{}, exception.ErrForbidden("forbidden")
+		return web.UpdateUserResponse{}, exception.ErrForbidden("you are not allowed to update this user")
 	}
 
 	// check if email already registered
@@ -158,7 +158,7 @@ func (s *userService) DeleteUser(param, userID int) *exception.CustomError {
 
 	// check if param is not match with userID
 	if user.ID != userID {
-		return exception.ErrForbidden("forbidden")
+		return exception.ErrForbidden("you are not allowed to delete this user")
 	}
 
 	// delete user

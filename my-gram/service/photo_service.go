@@ -110,7 +110,7 @@ func (s *photoService) UpdatePhoto(userID, photoID int, request web.PhotoRequest
 
 	// check if the photo belongs to the user
 	if photo.UserID != userID {
-		return web.UpdatePhotoResponse{}, exception.ErrForbidden("you are not the owner of the photo")
+		return web.UpdatePhotoResponse{}, exception.ErrForbidden("you are not allowed to update this photo")
 	}
 
 	// update photo
@@ -145,7 +145,7 @@ func (s *photoService) DeletePhoto(userID, photoID int) *exception.CustomError {
 
 	// check if the photo belongs to the user
 	if photo.UserID != userID {
-		return exception.ErrForbidden("you are not the owner of the photo")
+		return exception.ErrForbidden("you are not allowed to delete this photo")
 	}
 
 	// delete photo

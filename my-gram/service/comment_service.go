@@ -128,7 +128,7 @@ func (s *commentService) UpdateComment(userID, commentID int, request web.Update
 
 	// check if the comment belongs to the user
 	if comment.UserID != userID {
-		return web.UpdateCommentResponse{}, exception.ErrForbidden("you are not the owner of this comment")
+		return web.UpdateCommentResponse{}, exception.ErrForbidden("you are not allowed to update this comment")
 	}
 
 	// update comment
@@ -167,7 +167,7 @@ func (s *commentService) DeleteComment(userID, commentID int) *exception.CustomE
 
 	// check if the comment belongs to the user
 	if comment.UserID != userID {
-		return exception.ErrForbidden("you are not the owner of this comment")
+		return exception.ErrForbidden("you are not allowed to delete this comment")
 	}
 
 	// delete comment from database
