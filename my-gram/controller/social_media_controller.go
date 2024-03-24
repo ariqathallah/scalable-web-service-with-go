@@ -10,16 +10,22 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type UserController struct {
-	userService service.UserService
+type SocialMediaController struct {
+	socialMediaService service.SocialMediaService
 }
 
-func NewUserController(userService service.UserService) *UserController {
-	return &UserController{userService}
+func NewSocialMediaController(socialMediaService service.SocialMediaService) *SocialMediaController {
+	return &SocialMediaController{socialMediaService}
 }
 
-func (c *UserController) Register(ctx *gin.Context) {
-	var request web.RegisterRequest
+func (c *SocialMediaController) CreateSocialMedia(ctx *gin.Context) {
+	// get userID from claims
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	userID := claims["sub"].(float64)
+	intUSerID := int(userID)
+
+	// bind request
+	var request web.SocialMediaRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, web.WebResponse{
 			Code:    http.StatusBadRequest,
@@ -29,7 +35,8 @@ func (c *UserController) Register(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.userService.Register(request)
+	// call create social media service
+	response, err := c.socialMediaService.Create(intUSerID, request)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -46,8 +53,37 @@ func (c *UserController) Register(ctx *gin.Context) {
 	})
 }
 
-func (c *UserController) Login(ctx *gin.Context) {
-	var request web.LoginRequest
+func (c *SocialMediaController) GetAllSocialMedias(ctx *gin.Context) {
+	// get all social medias
+	socialMedias, err := c.socialMediaService.GetAllSocialMedias()
+	if err != nil {
+		ctx.JSON(err.Code, web.WebResponse{
+			Code:    err.Code,
+			Message: err.Message,
+			Data:    nil,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, web.WebResponse{
+		Code:    http.StatusOK,
+		Message: "ok",
+		Data:    socialMedias,
+	})
+}
+
+func (c *SocialMediaController) UpdateSocialMedia(ctx *gin.Context) {
+	// get params
+	socialMediaID := ctx.Param("id")
+	intSocialMediaID, _ := strconv.Atoi(socialMediaID)
+
+	// get userID from claims
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	userID := claims["sub"].(float64)
+	intUSerID := int(userID)
+
+	// bind request
+	var request web.SocialMediaRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, web.WebResponse{
 			Code:    http.StatusBadRequest,
@@ -57,7 +93,8 @@ func (c *UserController) Login(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.userService.Login(request)
+	// call update social media service
+	response, err := c.socialMediaService.Update(intUSerID, intSocialMediaID, request)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -74,27 +111,18 @@ func (c *UserController) Login(ctx *gin.Context) {
 	})
 }
 
-func (c *UserController) UpdateUser(ctx *gin.Context) {
+func (c *SocialMediaController) DeleteSocialMedia(ctx *gin.Context) {
 	// get params
-	param := ctx.Param("id")
-	intParam, _ := strconv.Atoi(param)
+	socialMediaID := ctx.Param("id")
+	intSocialMediaID, _ := strconv.Atoi(socialMediaID)
 
 	// get userID from claims
 	claims := ctx.MustGet("claims").(jwt.MapClaims)
 	userID := claims["sub"].(float64)
 	intUSerID := int(userID)
 
-	var request web.UpdateUserRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, web.WebResponse{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-			Data:    nil,
-		})
-		return
-	}
-
-	response, err := c.userService.UpdateUser(intParam, intUSerID, request)
+	// call delete social media service
+	err := c.socialMediaService.Delete(intUSerID, intSocialMediaID)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -106,34 +134,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, web.WebResponse{
 		Code:    http.StatusOK,
-		Message: "ok",
-		Data:    response,
-	})
-}
-
-func (c *UserController) DeleteUser(ctx *gin.Context) {
-	// get params
-	param := ctx.Param("id")
-	intParam, _ := strconv.Atoi(param)
-
-	// get userID from claims
-	claims := ctx.MustGet("claims").(jwt.MapClaims)
-	userID := claims["sub"].(float64)
-	intUSerID := int(userID)
-
-	err := c.userService.DeleteUser(intParam, intUSerID)
-	if err != nil {
-		ctx.JSON(err.Code, web.WebResponse{
-			Code:    err.Code,
-			Message: err.Message,
-			Data:    nil,
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, web.WebResponse{
-		Code:    http.StatusOK,
-		Message: "Your account has been successfully deleted",
+		Message: "Your social medias has been successfully deleted",
 		Data:    nil,
 	})
 }

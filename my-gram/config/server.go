@@ -3,8 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
 type serverConfig struct {

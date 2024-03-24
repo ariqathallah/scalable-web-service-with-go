@@ -10,16 +10,22 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type UserController struct {
-	userService service.UserService
+type CommentController struct {
+	commentService service.CommentService
 }
 
-func NewUserController(userService service.UserService) *UserController {
-	return &UserController{userService}
+func NewCommentController(commentService service.CommentService) *CommentController {
+	return &CommentController{commentService}
 }
 
-func (c *UserController) Register(ctx *gin.Context) {
-	var request web.RegisterRequest
+func (c *CommentController) CreateComment(ctx *gin.Context) {
+	// get userID from claims
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	userID := claims["sub"].(float64)
+	intUSerID := int(userID)
+
+	// bind request
+	var request web.CreateCommentRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, web.WebResponse{
 			Code:    http.StatusBadRequest,
@@ -29,7 +35,8 @@ func (c *UserController) Register(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.userService.Register(request)
+	// create photo
+	response, err := c.commentService.CreateComment(intUSerID, request)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -46,8 +53,37 @@ func (c *UserController) Register(ctx *gin.Context) {
 	})
 }
 
-func (c *UserController) Login(ctx *gin.Context) {
-	var request web.LoginRequest
+func (c *CommentController) GetAllComments(ctx *gin.Context) {
+	// get all comments
+	comments, err := c.commentService.GetAllComments()
+	if err != nil {
+		ctx.JSON(err.Code, web.WebResponse{
+			Code:    err.Code,
+			Message: err.Message,
+			Data:    nil,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, web.WebResponse{
+		Code:    http.StatusOK,
+		Message: "ok",
+		Data:    comments,
+	})
+}
+
+func (c *CommentController) UpdateComment(ctx *gin.Context) {
+	// get params
+	commentID := ctx.Param("id")
+	intCommentID, _ := strconv.Atoi(commentID)
+
+	// get userID from claims
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	userID := claims["sub"].(float64)
+	intUSerID := int(userID)
+
+	// bind request
+	var request web.UpdateCommentRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, web.WebResponse{
 			Code:    http.StatusBadRequest,
@@ -57,7 +93,8 @@ func (c *UserController) Login(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.userService.Login(request)
+	// update comment
+	response, err := c.commentService.UpdateComment(intUSerID, intCommentID, request)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -74,27 +111,18 @@ func (c *UserController) Login(ctx *gin.Context) {
 	})
 }
 
-func (c *UserController) UpdateUser(ctx *gin.Context) {
+func (c *CommentController) DeleteComment(ctx *gin.Context) {
 	// get params
-	param := ctx.Param("id")
-	intParam, _ := strconv.Atoi(param)
+	commentID := ctx.Param("id")
+	intCommentID, _ := strconv.Atoi(commentID)
 
 	// get userID from claims
 	claims := ctx.MustGet("claims").(jwt.MapClaims)
 	userID := claims["sub"].(float64)
 	intUSerID := int(userID)
 
-	var request web.UpdateUserRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, web.WebResponse{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-			Data:    nil,
-		})
-		return
-	}
-
-	response, err := c.userService.UpdateUser(intParam, intUSerID, request)
+	// delete comment
+	err := c.commentService.DeleteComment(intUSerID, intCommentID)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -106,34 +134,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, web.WebResponse{
 		Code:    http.StatusOK,
-		Message: "ok",
-		Data:    response,
-	})
-}
-
-func (c *UserController) DeleteUser(ctx *gin.Context) {
-	// get params
-	param := ctx.Param("id")
-	intParam, _ := strconv.Atoi(param)
-
-	// get userID from claims
-	claims := ctx.MustGet("claims").(jwt.MapClaims)
-	userID := claims["sub"].(float64)
-	intUSerID := int(userID)
-
-	err := c.userService.DeleteUser(intParam, intUSerID)
-	if err != nil {
-		ctx.JSON(err.Code, web.WebResponse{
-			Code:    err.Code,
-			Message: err.Message,
-			Data:    nil,
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, web.WebResponse{
-		Code:    http.StatusOK,
-		Message: "Your account has been successfully deleted",
+		Message: "Your comment has been successfully deleted",
 		Data:    nil,
 	})
 }

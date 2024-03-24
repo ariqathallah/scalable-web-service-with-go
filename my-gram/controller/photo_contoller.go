@@ -10,16 +10,22 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type UserController struct {
-	userService service.UserService
+type PhotoController struct {
+	photoService service.PhotoService
 }
 
-func NewUserController(userService service.UserService) *UserController {
-	return &UserController{userService}
+func NewPhotoController(photoService service.PhotoService) *PhotoController {
+	return &PhotoController{photoService}
 }
 
-func (c *UserController) Register(ctx *gin.Context) {
-	var request web.RegisterRequest
+func (c *PhotoController) CreatePhoto(ctx *gin.Context) {
+	// get userID from claims
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	userID := claims["sub"].(float64)
+	intUSerID := int(userID)
+
+	// bind request
+	var request web.PhotoRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, web.WebResponse{
 			Code:    http.StatusBadRequest,
@@ -29,7 +35,8 @@ func (c *UserController) Register(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.userService.Register(request)
+	// call create photo service
+	response, err := c.photoService.CreatePhoto(intUSerID, request)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -46,8 +53,37 @@ func (c *UserController) Register(ctx *gin.Context) {
 	})
 }
 
-func (c *UserController) Login(ctx *gin.Context) {
-	var request web.LoginRequest
+func (c *PhotoController) GetAllPhotos(ctx *gin.Context) {
+	// get all photos
+	photos, err := c.photoService.GetAllPhotos()
+	if err != nil {
+		ctx.JSON(err.Code, web.WebResponse{
+			Code:    err.Code,
+			Message: err.Message,
+			Data:    nil,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, web.WebResponse{
+		Code:    http.StatusOK,
+		Message: "ok",
+		Data:    photos,
+	})
+}
+
+func (c *PhotoController) UpdatePhoto(ctx *gin.Context) {
+	// get params
+	photoID := ctx.Param("id")
+	intPhotoID, _ := strconv.Atoi(photoID)
+
+	// get userID from claims
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	userID := claims["sub"].(float64)
+	intUSerID := int(userID)
+
+	// bind request
+	var request web.PhotoRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, web.WebResponse{
 			Code:    http.StatusBadRequest,
@@ -57,7 +93,8 @@ func (c *UserController) Login(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.userService.Login(request)
+	// update photo
+	response, err := c.photoService.UpdatePhoto(intUSerID, intPhotoID, request)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -74,27 +111,18 @@ func (c *UserController) Login(ctx *gin.Context) {
 	})
 }
 
-func (c *UserController) UpdateUser(ctx *gin.Context) {
+func (c *PhotoController) DeletePhoto(ctx *gin.Context) {
 	// get params
-	param := ctx.Param("id")
-	intParam, _ := strconv.Atoi(param)
+	photoID := ctx.Param("id")
+	intPhotoID, _ := strconv.Atoi(photoID)
 
 	// get userID from claims
 	claims := ctx.MustGet("claims").(jwt.MapClaims)
 	userID := claims["sub"].(float64)
 	intUSerID := int(userID)
 
-	var request web.UpdateUserRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, web.WebResponse{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-			Data:    nil,
-		})
-		return
-	}
-
-	response, err := c.userService.UpdateUser(intParam, intUSerID, request)
+	// delete photo
+	err := c.photoService.DeletePhoto(intUSerID, intPhotoID)
 	if err != nil {
 		ctx.JSON(err.Code, web.WebResponse{
 			Code:    err.Code,
@@ -106,34 +134,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, web.WebResponse{
 		Code:    http.StatusOK,
-		Message: "ok",
-		Data:    response,
-	})
-}
-
-func (c *UserController) DeleteUser(ctx *gin.Context) {
-	// get params
-	param := ctx.Param("id")
-	intParam, _ := strconv.Atoi(param)
-
-	// get userID from claims
-	claims := ctx.MustGet("claims").(jwt.MapClaims)
-	userID := claims["sub"].(float64)
-	intUSerID := int(userID)
-
-	err := c.userService.DeleteUser(intParam, intUSerID)
-	if err != nil {
-		ctx.JSON(err.Code, web.WebResponse{
-			Code:    err.Code,
-			Message: err.Message,
-			Data:    nil,
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, web.WebResponse{
-		Code:    http.StatusOK,
-		Message: "Your account has been successfully deleted",
+		Message: "Your photo has been successfully deleted",
 		Data:    nil,
 	})
 }
