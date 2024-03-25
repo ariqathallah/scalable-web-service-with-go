@@ -2,11 +2,10 @@ package service
 
 import (
 	"my-gram/exception"
+	"my-gram/helper"
 	"my-gram/model/domain"
 	"my-gram/model/web"
 	"my-gram/repository"
-
-	"github.com/go-playground/validator"
 )
 
 type PhotoService interface {
@@ -17,14 +16,12 @@ type PhotoService interface {
 }
 
 type photoService struct {
-	Validate  *validator.Validate
 	PhotoRepo repository.PhotoRepository
 	UserRepo  repository.UserRepository
 }
 
-func NewPhotoService(validate *validator.Validate, photoRepo repository.PhotoRepository, userRepo repository.UserRepository) *photoService {
+func NewPhotoService(photoRepo repository.PhotoRepository, userRepo repository.UserRepository) *photoService {
 	return &photoService{
-		Validate:  validate,
 		PhotoRepo: photoRepo,
 		UserRepo:  userRepo,
 	}
@@ -32,8 +29,9 @@ func NewPhotoService(validate *validator.Validate, photoRepo repository.PhotoRep
 
 func (s *photoService) CreatePhoto(userID int, request web.PhotoRequest) (web.CreatePhotoResponse, *exception.CustomError) {
 	// validate request
-	if err := s.Validate.Struct(request); err != nil {
-		return web.CreatePhotoResponse{}, exception.ErrBadRequest(err.Error())
+	validateMessages := helper.PhotoValidate(request)
+	for _, message := range validateMessages {
+		return web.CreatePhotoResponse{}, exception.ErrBadRequest(message)
 	}
 
 	// create photo
@@ -47,7 +45,7 @@ func (s *photoService) CreatePhoto(userID int, request web.PhotoRequest) (web.Cr
 	// insert photo to database
 	savedPhoto, err := s.PhotoRepo.Create(photo)
 	if err != nil {
-		return web.CreatePhotoResponse{}, exception.ErrInternalServer("failed to save photo to database")
+		return web.CreatePhotoResponse{}, exception.ErrInternalServer("Failed to save photo to database")
 	}
 
 	// return response
@@ -67,7 +65,7 @@ func (s *photoService) GetAllPhotos() ([]web.GetPhotoResponse, *exception.Custom
 	// get all photos from database
 	photos, err := s.PhotoRepo.GetAll()
 	if err != nil {
-		return nil, exception.ErrInternalServer("failed to get photos from database")
+		return nil, exception.ErrInternalServer("Failed to get photos from database")
 	}
 
 	var response []web.GetPhotoResponse
@@ -75,7 +73,7 @@ func (s *photoService) GetAllPhotos() ([]web.GetPhotoResponse, *exception.Custom
 		// retrieve user data
 		user, err := s.UserRepo.GetByID(photo.UserID)
 		if err != nil {
-			return nil, exception.ErrInternalServer("failed to get user data from database")
+			return nil, exception.ErrInternalServer("Failed to get user data from database")
 		}
 
 		response = append(response, web.GetPhotoResponse{
@@ -98,19 +96,20 @@ func (s *photoService) GetAllPhotos() ([]web.GetPhotoResponse, *exception.Custom
 
 func (s *photoService) UpdatePhoto(userID, photoID int, request web.PhotoRequest) (web.UpdatePhotoResponse, *exception.CustomError) {
 	// validate request
-	if err := s.Validate.Struct(request); err != nil {
-		return web.UpdatePhotoResponse{}, exception.ErrBadRequest(err.Error())
+	validateMessages := helper.PhotoValidate(request)
+	for _, message := range validateMessages {
+		return web.UpdatePhotoResponse{}, exception.ErrBadRequest(message)
 	}
 
 	// get photo by id
 	photo, err := s.PhotoRepo.GetByID(photoID)
 	if err != nil {
-		return web.UpdatePhotoResponse{}, exception.ErrNotFound("photo not found")
+		return web.UpdatePhotoResponse{}, exception.ErrNotFound("Photo not found")
 	}
 
 	// check if the photo belongs to the user
 	if photo.UserID != userID {
-		return web.UpdatePhotoResponse{}, exception.ErrForbidden("you are not allowed to update this photo")
+		return web.UpdatePhotoResponse{}, exception.ErrForbidden("You are not allowed to update this photo")
 	}
 
 	// update photo
@@ -121,7 +120,7 @@ func (s *photoService) UpdatePhoto(userID, photoID int, request web.PhotoRequest
 	// save photo to database
 	updatedPhoto, err := s.PhotoRepo.Update(photo)
 	if err != nil {
-		return web.UpdatePhotoResponse{}, exception.ErrInternalServer("failed to update photo to database")
+		return web.UpdatePhotoResponse{}, exception.ErrInternalServer("Failed to update photo to database")
 	}
 
 	response := web.UpdatePhotoResponse{
@@ -140,17 +139,17 @@ func (s *photoService) DeletePhoto(userID, photoID int) *exception.CustomError {
 	// get photo by id
 	photo, err := s.PhotoRepo.GetByID(photoID)
 	if err != nil {
-		return exception.ErrNotFound("photo not found")
+		return exception.ErrNotFound("Photo not found")
 	}
 
 	// check if the photo belongs to the user
 	if photo.UserID != userID {
-		return exception.ErrForbidden("you are not allowed to delete this photo")
+		return exception.ErrForbidden("You are not allowed to delete this photo")
 	}
 
 	// delete photo
 	if err := s.PhotoRepo.Delete(photo.ID); err != nil {
-		return exception.ErrInternalServer("failed to delete photo")
+		return exception.ErrInternalServer("Failed to delete photo")
 	}
 
 	return nil

@@ -2,11 +2,10 @@ package service
 
 import (
 	"my-gram/exception"
+	"my-gram/helper"
 	"my-gram/model/domain"
 	"my-gram/model/web"
 	"my-gram/repository"
-
-	"github.com/go-playground/validator"
 )
 
 type SocialMediaService interface {
@@ -17,14 +16,12 @@ type SocialMediaService interface {
 }
 
 type socialMediaService struct {
-	Validate        *validator.Validate
 	SocialMediaRepo repository.SocialMediaRepository
 	UserRepo        repository.UserRepository
 }
 
-func NewSocialMediaService(validate *validator.Validate, socialMediaRepo repository.SocialMediaRepository, userRepo repository.UserRepository) *socialMediaService {
+func NewSocialMediaService(socialMediaRepo repository.SocialMediaRepository, userRepo repository.UserRepository) *socialMediaService {
 	return &socialMediaService{
-		Validate:        validate,
 		SocialMediaRepo: socialMediaRepo,
 		UserRepo:        userRepo,
 	}
@@ -32,8 +29,9 @@ func NewSocialMediaService(validate *validator.Validate, socialMediaRepo reposit
 
 func (s *socialMediaService) Create(userID int, request web.SocialMediaRequest) (web.CreateSocialMediaResponse, *exception.CustomError) {
 	// validate request
-	if err := s.Validate.Struct(request); err != nil {
-		return web.CreateSocialMediaResponse{}, exception.ErrBadRequest(err.Error())
+	validateMessages := helper.SocialMediaValidate(request)
+	for _, message := range validateMessages {
+		return web.CreateSocialMediaResponse{}, exception.ErrBadRequest(message)
 	}
 
 	// create social media
@@ -46,7 +44,7 @@ func (s *socialMediaService) Create(userID int, request web.SocialMediaRequest) 
 	// insert social media to database
 	savedSocialMedia, err := s.SocialMediaRepo.Create(socialMedia)
 	if err != nil {
-		return web.CreateSocialMediaResponse{}, exception.ErrInternalServer("failed to save social media to database")
+		return web.CreateSocialMediaResponse{}, exception.ErrInternalServer("Failed to save social media to database")
 	}
 
 	// return response
@@ -65,7 +63,7 @@ func (s *socialMediaService) GetAllSocialMedias() ([]web.GetSocialMediaResponse,
 	// get all social medias from database
 	socialMedias, err := s.SocialMediaRepo.GetAll()
 	if err != nil {
-		return []web.GetSocialMediaResponse{}, exception.ErrInternalServer("failed to get social medias from database")
+		return []web.GetSocialMediaResponse{}, exception.ErrInternalServer("Failed to get social medias from database")
 	}
 
 	var responses []web.GetSocialMediaResponse
@@ -73,7 +71,7 @@ func (s *socialMediaService) GetAllSocialMedias() ([]web.GetSocialMediaResponse,
 		// retrieve user data
 		user, err := s.UserRepo.GetByID(socialMedia.UserID)
 		if err != nil {
-			return nil, exception.ErrInternalServer("failed to get user data from database")
+			return nil, exception.ErrInternalServer("Failed to get user data from database")
 		}
 
 		response := web.GetSocialMediaResponse{
@@ -98,19 +96,20 @@ func (s *socialMediaService) GetAllSocialMedias() ([]web.GetSocialMediaResponse,
 
 func (s *socialMediaService) Update(userID, socialMediaID int, request web.SocialMediaRequest) (web.UpdateSocialMediaResponse, *exception.CustomError) {
 	// validate request
-	if err := s.Validate.Struct(request); err != nil {
-		return web.UpdateSocialMediaResponse{}, exception.ErrBadRequest(err.Error())
+	validateMessages := helper.SocialMediaValidate(request)
+	for _, message := range validateMessages {
+		return web.UpdateSocialMediaResponse{}, exception.ErrBadRequest(message)
 	}
 
 	// get social media by id
 	socialMedia, err := s.SocialMediaRepo.GetByID(socialMediaID)
 	if err != nil {
-		return web.UpdateSocialMediaResponse{}, exception.ErrNotFound("social media not found")
+		return web.UpdateSocialMediaResponse{}, exception.ErrNotFound("Social media not found")
 	}
 
 	// check if the social media belongs to the user
 	if socialMedia.UserID != userID {
-		return web.UpdateSocialMediaResponse{}, exception.ErrForbidden("you are not allowed to update this social media")
+		return web.UpdateSocialMediaResponse{}, exception.ErrForbidden("You are not allowed to update this social media")
 	}
 
 	// update social media
@@ -120,7 +119,7 @@ func (s *socialMediaService) Update(userID, socialMediaID int, request web.Socia
 	// save social media to database
 	updatedSocialMedia, err := s.SocialMediaRepo.Update(socialMedia)
 	if err != nil {
-		return web.UpdateSocialMediaResponse{}, exception.ErrInternalServer("failed to update social media in database")
+		return web.UpdateSocialMediaResponse{}, exception.ErrInternalServer("Failed to update social media in database")
 	}
 
 	response := web.UpdateSocialMediaResponse{
@@ -138,17 +137,17 @@ func (s *socialMediaService) Delete(userID, socialMediaID int) *exception.Custom
 	// get social media by ID
 	socialMedia, err := s.SocialMediaRepo.GetByID(socialMediaID)
 	if err != nil {
-		return exception.ErrNotFound("social media not found")
+		return exception.ErrNotFound("Social media not found")
 	}
 
 	// check if the social media belongs to the user
 	if socialMedia.UserID != userID {
-		return exception.ErrForbidden("you are not allowed to delete this social media")
+		return exception.ErrForbidden("You are not allowed to delete this social media")
 	}
 
 	// delete social media
 	if err := s.SocialMediaRepo.Delete(socialMediaID); err != nil {
-		return exception.ErrInternalServer("failed to delete social media from database")
+		return exception.ErrInternalServer("Failed to delete social media from database")
 	}
 
 	return nil

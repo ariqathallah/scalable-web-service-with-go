@@ -10,7 +10,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator"
 )
 
 func main() {
@@ -20,17 +19,16 @@ func main() {
 	}
 
 	serverConfig := config.NewServerConfig()
-	validate := validator.New()
 
 	userRepository := repository.NewUserRepository(db)
 	photoRepository := repository.NewPhotoRepository(db)
 	commentRepository := repository.NewCommentRepository(db)
 	socialMediaRepository := repository.NewSocialMediaRepository(db)
 
-	userService := service.NewUserService(validate, userRepository)
-	photoService := service.NewPhotoService(validate, photoRepository, userRepository)
-	commentService := service.NewCommentService(validate, commentRepository, photoRepository, userRepository)
-	socialMediaService := service.NewSocialMediaService(validate, socialMediaRepository, userRepository)
+	userService := service.NewUserService(userRepository)
+	photoService := service.NewPhotoService(photoRepository, userRepository)
+	commentService := service.NewCommentService(commentRepository, photoRepository, userRepository)
+	socialMediaService := service.NewSocialMediaService(socialMediaRepository, userRepository)
 
 	userController := controller.NewUserController(userService)
 	photoController := controller.NewPhotoController(photoService)

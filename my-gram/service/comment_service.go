@@ -2,11 +2,10 @@ package service
 
 import (
 	"my-gram/exception"
+	"my-gram/helper"
 	"my-gram/model/domain"
 	"my-gram/model/web"
 	"my-gram/repository"
-
-	"github.com/go-playground/validator"
 )
 
 type CommentService interface {
@@ -17,15 +16,13 @@ type CommentService interface {
 }
 
 type commentService struct {
-	Validate    *validator.Validate
 	CommentRepo repository.CommentRepository
 	PhotoRepo   repository.PhotoRepository
 	UserRepo    repository.UserRepository
 }
 
-func NewCommentService(validate *validator.Validate, commentRepo repository.CommentRepository, photoRepo repository.PhotoRepository, userRepo repository.UserRepository) *commentService {
+func NewCommentService(commentRepo repository.CommentRepository, photoRepo repository.PhotoRepository, userRepo repository.UserRepository) *commentService {
 	return &commentService{
-		Validate:    validate,
 		CommentRepo: commentRepo,
 		PhotoRepo:   photoRepo,
 		UserRepo:    userRepo,
@@ -34,14 +31,15 @@ func NewCommentService(validate *validator.Validate, commentRepo repository.Comm
 
 func (s *commentService) CreateComment(userID int, request web.CreateCommentRequest) (web.CreateCommentResponse, *exception.CustomError) {
 	// validate request
-	if err := s.Validate.Struct(request); err != nil {
-		return web.CreateCommentResponse{}, exception.ErrBadRequest(err.Error())
+	validateMessages := helper.CreateCommentValidate(request)
+	for _, message := range validateMessages {
+		return web.CreateCommentResponse{}, exception.ErrBadRequest(message)
 	}
 
 	// check if photo exists
 	photo, err := s.PhotoRepo.GetByID(request.PhotoID)
 	if err != nil {
-		return web.CreateCommentResponse{}, exception.ErrNotFound("photo not found")
+		return web.CreateCommentResponse{}, exception.ErrNotFound("Photo not found")
 	}
 
 	// create comment
@@ -54,7 +52,7 @@ func (s *commentService) CreateComment(userID int, request web.CreateCommentRequ
 	// insert comment to database
 	savedComment, err := s.CommentRepo.Create(comment)
 	if err != nil {
-		return web.CreateCommentResponse{}, exception.ErrInternalServer("failed to save comment to database")
+		return web.CreateCommentResponse{}, exception.ErrInternalServer("Failed to save comment to database")
 	}
 
 	response := web.CreateCommentResponse{
@@ -72,7 +70,7 @@ func (s *commentService) GetAllComments() ([]web.GetCommentResponse, *exception.
 	// get all comments from database
 	comments, err := s.CommentRepo.GetAll()
 	if err != nil {
-		return nil, exception.ErrInternalServer("failed to get comments from database")
+		return nil, exception.ErrInternalServer("Failed to get comments from database")
 	}
 
 	var response []web.GetCommentResponse
@@ -80,13 +78,13 @@ func (s *commentService) GetAllComments() ([]web.GetCommentResponse, *exception.
 		// retrieve user data
 		user, err := s.UserRepo.GetByID(comment.UserID)
 		if err != nil {
-			return nil, exception.ErrInternalServer("failed to get user data from database")
+			return nil, exception.ErrInternalServer("Failed to get user data from database")
 		}
 
 		// retrieve photo data
 		photo, err := s.PhotoRepo.GetByID(comment.PhotoID)
 		if err != nil {
-			return nil, exception.ErrInternalServer("failed to get photo data from database")
+			return nil, exception.ErrInternalServer("Failed to get photo data from database")
 		}
 
 		response = append(response, web.GetCommentResponse{
@@ -116,19 +114,20 @@ func (s *commentService) GetAllComments() ([]web.GetCommentResponse, *exception.
 
 func (s *commentService) UpdateComment(userID, commentID int, request web.UpdateCommentRequest) (web.UpdateCommentResponse, *exception.CustomError) {
 	// validate request
-	if err := s.Validate.Struct(request); err != nil {
-		return web.UpdateCommentResponse{}, exception.ErrBadRequest(err.Error())
+	validateMessages := helper.UpdateCommentValidate(request)
+	for _, message := range validateMessages {
+		return web.UpdateCommentResponse{}, exception.ErrBadRequest(message)
 	}
 
 	// check if comment exists
 	comment, err := s.CommentRepo.GetByID(commentID)
 	if err != nil {
-		return web.UpdateCommentResponse{}, exception.ErrNotFound("comment not found")
+		return web.UpdateCommentResponse{}, exception.ErrNotFound("Comment not found")
 	}
 
 	// check if the comment belongs to the user
 	if comment.UserID != userID {
-		return web.UpdateCommentResponse{}, exception.ErrForbidden("you are not allowed to update this comment")
+		return web.UpdateCommentResponse{}, exception.ErrForbidden("You are not allowed to update this comment")
 	}
 
 	// update comment
@@ -137,13 +136,13 @@ func (s *commentService) UpdateComment(userID, commentID int, request web.Update
 	// save comment to database
 	updatedComment, err := s.CommentRepo.Update(comment)
 	if err != nil {
-		return web.UpdateCommentResponse{}, exception.ErrInternalServer("failed to update comment to database")
+		return web.UpdateCommentResponse{}, exception.ErrInternalServer("Failed to update comment to database")
 	}
 
 	// get photo data
 	photo, err := s.PhotoRepo.GetByID(updatedComment.PhotoID)
 	if err != nil {
-		return web.UpdateCommentResponse{}, exception.ErrInternalServer("failed to get photo data from database")
+		return web.UpdateCommentResponse{}, exception.ErrInternalServer("Failed to get photo data from database")
 	}
 
 	response := web.UpdateCommentResponse{
@@ -162,17 +161,17 @@ func (s *commentService) DeleteComment(userID, commentID int) *exception.CustomE
 	// check if comment exists
 	comment, err := s.CommentRepo.GetByID(commentID)
 	if err != nil {
-		return exception.ErrNotFound("comment not found")
+		return exception.ErrNotFound("Comment not found")
 	}
 
 	// check if the comment belongs to the user
 	if comment.UserID != userID {
-		return exception.ErrForbidden("you are not allowed to delete this comment")
+		return exception.ErrForbidden("You are not allowed to delete this comment")
 	}
 
 	// delete comment from database
 	if err := s.CommentRepo.Delete(comment.ID); err != nil {
-		return exception.ErrInternalServer("failed to delete comment from database")
+		return exception.ErrInternalServer("Failed to delete comment from database")
 	}
 
 	return nil

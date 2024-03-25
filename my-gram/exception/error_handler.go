@@ -1,6 +1,8 @@
 package exception
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type CustomError struct {
 	Code    int    `json:"code"`
